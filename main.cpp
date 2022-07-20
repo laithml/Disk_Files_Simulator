@@ -10,8 +10,6 @@ using namespace std;
 
 #define DISK_SIZE 16
 
-// ============================================================================
-
 class FsFile {
     int file_size;
     int block_in_use;
@@ -65,6 +63,9 @@ public:
         file_name = FileName;
         fs_file = fsi;
         inUse = true;
+    }
+    ~FileDescriptor(){
+        delete fs_file;
     }
 
     string getFileName() {
@@ -136,6 +137,9 @@ public:
     }
 
     ~fsDisk() {
+        for (auto file:MainDir) {
+            delete file;
+        }
         MainDir.clear();
         OpenFileDescriptors.clear();
         delete[] BitVector;
@@ -164,6 +168,12 @@ public:
 
     // ------------------------------------------------------------------------
     void fsFormat(int blockSize = 4) {
+        if(is_formated){
+            for (auto &file:MainDir) {
+                if(!file->getFileName().empty())
+                    DelFile((file->getFileName()));
+            }
+        }
         BitVectorSize = DISK_SIZE / blockSize;
         BitVector = new int[BitVectorSize];
         int k = 0;
@@ -218,7 +228,7 @@ public:
             return -1;
         int i = 0;
         for (auto & file: MainDir) {
-            if (file -> getFileName() == fileName) {
+            if (file -> getFileName() == fileName && !file->isInUse()) {
                 file -> setInUse(true);
                 OpenFileDescriptors.push_back(i);
                 return i;
@@ -230,7 +240,7 @@ public:
 
     // ------------------------------------------------------------------------
     string CloseFile(int fd) {
-        if (!is_formated || fd > MainDir.size() - 1 || fd < 0 || !MainDir[fd] -> isInUse())
+        if (!is_formated || fd > (int)MainDir.size() - 1 || fd < 0 || !MainDir[fd] -> isInUse())
             return "-1";
 
         int i = 0;
@@ -247,7 +257,7 @@ public:
 
     // ------------------------------------------------------------------------
     int WriteToFile(int fd, char * buf, int len) {
-        if (fd > MainDir.size() - 1 || fd < 0 || !is_formated)
+        if (fd > (int) MainDir.size()-1|| fd < 0 || !is_formated)
             return -1;
         if (!MainDir[fd] -> isInUse())
             return -1;
@@ -340,7 +350,7 @@ public:
 
     // ------------------------------------------------------------------------
     int ReadFromFile(int fd, char * buf, int len) {
-        if (!is_formated || fd > MainDir.size() - 1 || fd < 0 || !MainDir[fd] -> isInUse())
+        if (!is_formated || fd > (int) MainDir.size()-1|| fd < 0 || !MainDir[fd] -> isInUse())
             return -1;
         int blockIndex = MainDir[fd] -> getFsFile() -> getIndexBlock();
         unsigned char temp[sizeOfBlock];
@@ -408,8 +418,12 @@ private:
             int ret_val = fseek(sim_disk_fd, i + ind, SEEK_SET);
             ret_val = fread( & c, 1, 1, sim_disk_fd);
             assert(ret_val);
+            ret_val = fseek(sim_disk_fd, i + ind, SEEK_SET);
+            ret_val = fwrite( "\0", 1, 1, sim_disk_fd);
+            assert(ret_val);
             if (c != '\0') {
-                int dataInd = (int) c;
+                int dataInd = (int) c * sizeOfBlock;
+                BitVector[(int) c]=0;
                 for (int j = 0; j < sizeOfBlock; ++j) {
                     int ret_val1 = fseek(sim_disk_fd, j + dataInd, SEEK_SET);
                     ret_val1 = fwrite("\0", 1, 1, sim_disk_fd);
@@ -417,6 +431,7 @@ private:
                 }
             }
         }
+        BitVector[ind]=0;
 
     }
 
