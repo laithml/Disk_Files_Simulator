@@ -139,7 +139,6 @@ public:
 
     ~fsDisk() {
         for (auto file: MainDir) {
-            if (file->getFsFile() != nullptr && !file->getFileName().empty())
                 delete file;
         }
         MainDir.clear();
@@ -152,7 +151,7 @@ public:
         int i = 0;
 
         for (; i < MainDir.size();) {
-            if (!MainDir[i]->getFileName().empty() && MainDir[i]->getFsFile() != nullptr)
+            if (!MainDir[i]->getFileName().empty())
                 cout << "index: " << i << ": FileName: " << MainDir[i]->getFileName() << " , isInUse: " << MainDir[i]->isInUse() << endl;
             i++;
         }
@@ -205,20 +204,19 @@ public:
             }
         }
         FsFile *fs = new FsFile(sizeOfBlock);
-
+        FileDescriptor *newFile = new FileDescriptor(fileName, fs);
         int i = 0;
         for (auto &file: MainDir) {
-            if (file->getFileName().empty() == 1 && file->getFsFile() == nullptr) {
-                file->setFileName(fileName);
-                file->setFsFile(fs);
+            if (file->getFileName().empty()) {
+                delete MainDir[i];
+                MainDir.erase(MainDir.begin()+i);
+                MainDir.insert(MainDir.begin()+i,newFile);
                 OpenFileDescriptors.push_back(i);
                 file->setInUse(true);
                 return i;
             }
             i++;
         }
-
-        FileDescriptor *newFile = new FileDescriptor(fileName, fs);
         MainDir.push_back(newFile);
         OpenFileDescriptors.push_back(MainDir.size() - 1);
         return MainDir.size() - 1;
@@ -347,8 +345,6 @@ public:
                     clearAllDataOfFile(i);
                 }
                 MainDir[i]->setFileName("");
-                delete MainDir[i]->getFsFile();
-                MainDir[i]->setFsFile(nullptr);
                 return i;
             }
 
@@ -361,9 +357,10 @@ public:
 
     // ------------------------------------------------------------------------
     int ReadFromFile(int fd, char *buf, int len) {
-        if (!is_formated || fd > (int) MainDir.size() - 1 || fd < 0 || !MainDir[fd]->isInUse())
+        buf[0]='\0';
+        if (!is_formated || fd > (int) MainDir.size() - 1 || fd < 0 || !MainDir[fd]->isInUse()) {
             return -1;
-        buf[len];
+        }
         int blockIndex = MainDir[fd]->getFsFile()->getIndexBlock();
         unsigned char c;
         int j;
@@ -428,7 +425,8 @@ private:
                 done++;
             }
         }
-        BitVector[ind] = 0;
+        if(ind<BitVectorSize)
+            BitVector[ind] = 0;
 
     }
 
@@ -512,3 +510,4 @@ int main() {
     }
 
 }
+
