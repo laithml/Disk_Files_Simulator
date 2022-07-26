@@ -8,7 +8,7 @@
 
 using namespace std;
 
-#define DISK_SIZE 80
+#define DISK_SIZE 16
 
 
 class FsFile {
@@ -441,6 +441,7 @@ int main() {
 
     fsDisk *fs = new fsDisk();
     int cmd_;
+
 
 
 //    fs->fsFormat(1);
