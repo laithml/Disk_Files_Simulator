@@ -9,7 +9,7 @@
 
 using namespace std;
 
-#define DISK_SIZE 80
+#define DISK_SIZE 16
 
 //Proprieties of file
 class FsFile {
@@ -141,12 +141,12 @@ public:
 
     //destructor delete all allocation object and close the file.
     ~fsDisk() {
-        for (auto file: MainDir) {
+        for(auto file:MainDir){
             delete file;
         }
         MainDir.clear();
-        OpenFileDescriptors.clear();
-        delete[] BitVector;
+        fsFormat();
+        delete [] BitVector;
         fclose(sim_disk_fd);
     }
 
@@ -166,7 +166,7 @@ public:
             fseek(sim_disk_fd, i, SEEK_SET);
             size_t ret_val = fread(&bufy, 1, 1, sim_disk_fd);
             assert(ret_val);
-            if(bufy<=32)
+            if(bufy<=32&& bufy!=0)
                 bufy+=32;
             cout << bufy;
             cout << ")";
@@ -227,10 +227,8 @@ public:
         FileDescriptor *newFile;
         newFile = new FileDescriptor(fileName, fs);
 
-        /*
-         * if there was a deleted file so search for his index and insert the new file over the deleted one
-         * return the index of the file so this is his fd
-         */
+
+        //add the filename to opened file
         int i = 0;
         for (auto &file: OpenFileDescriptors) {
             if (file.empty()) {
@@ -252,11 +250,20 @@ public:
     int OpenFile(string fileName) {
         if (!is_formated)
             return -1;
+        bool found= false;
         //search for the file and check if It's close to open it and add it to OpenFileDescriptors and update inUse value, else return -1
         for(auto file:MainDir){
-            if(file->getFileName()==fileName)
+            if(file->getFileName()==fileName){
                 file->setInUse(true);
+                found=true;
+            }
         }
+        if(!found)
+            return -1;
+        /*
+         * if there was a closed file so search for his index and insert the new open file over the closed one
+         * return the index of the file so this is his fd
+         */
         int i = 0;
         for (auto &file: OpenFileDescriptors) {
             if (file.empty()) {
@@ -271,7 +278,7 @@ public:
 
     // ------------------------------------------------------------------------
     string CloseFile(int fd) {
-        if (!is_formated || fd > (int) OpenFileDescriptors.size() - 1 || fd < 0 || !MainDir[fd]->isInUse())
+        if (!is_formated || fd > (int) OpenFileDescriptors.size() - 1 || fd < 0 )
             return "-1";
         string fileName=OpenFileDescriptors[fd];
         if(fileName.empty())
@@ -279,6 +286,7 @@ public:
         
         OpenFileDescriptors[fd]="";
         //search for the file and check if It's open to close it and remove it to OpenFileDescriptors and update inUse value, else return -1
+
         for(auto file:MainDir){
             if(file->getFileName()==fileName)
                 file->setInUse(false);
@@ -477,22 +485,13 @@ private:
     //clear all data of the file when delete it.
     void clearAllDataOfFile(int fd) {
         unsigned char c;
-        string fileName=OpenFileDescriptors[fd];
-        if(fileName.empty())
-            return;
-        int FD=0;
-        for(auto file:MainDir){
-            if(file->getFileName()==fileName)
-                break;
-            FD++;
-        }
-        int ind = MainDir[FD]->getFsFile()->getIndexBlock();
+        int ind = MainDir[fd]->getFsFile()->getIndexBlock();
         if(ind==-1)
             return;
 
         int done = 0, i = 0, dataInd;
         //get the index block of the file, and start read the data index blocks and delete the data form it by override it with '\0' and update the bit vector
-        while (done < MainDir[FD]->getFsFile()->getfile_size()) {
+        while (done < MainDir[fd]->getFsFile()->getfile_size()) {
             fseek(sim_disk_fd, i + ind, SEEK_SET);
             size_t ret_val = fread(&c, 1, 1, sim_disk_fd);
             assert(ret_val);
@@ -502,7 +501,7 @@ private:
             BitVector[(int) c] = 0;
             dataInd = (int) c * sizeOfBlock;
             i++;
-            for (int j = 0; j < sizeOfBlock && done < MainDir[FD]->getFsFile()->getfile_size(); j++) {
+            for (int j = 0; j < sizeOfBlock && done < MainDir[fd]->getFsFile()->getfile_size(); j++) {
                 fseek(sim_disk_fd, j + dataInd, SEEK_SET);
                 ret_val = fwrite("\0", 1, 1, sim_disk_fd);
                 assert(ret_val);
