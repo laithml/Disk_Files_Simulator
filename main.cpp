@@ -84,9 +84,6 @@ public:
         return fs_file;
     }
 
-    void setFileName(const string &fileName) {
-        file_name = fileName;
-    }
 
     void setInUse(bool inUse1) {
         FileDescriptor::inUse = inUse1;
@@ -528,14 +525,6 @@ int main() {
     int cmd_;
 
 
-
-//    fs->fsFormat(1);
-//    char s[20];
-//    for(int i=0;i<127;i++){
-//        sprintf(s,"%d",i);
-//        fs->CreateFile(s);
-//        fs->WriteToFile(i,"1", 1);
-//    }
     while (true) {
         cin >> cmd_;
         switch (cmd_) {
