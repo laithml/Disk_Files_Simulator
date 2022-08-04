@@ -265,7 +265,7 @@ public:
         for (auto &file: OpenFileDescriptors) {
             if (file.empty()) {
                 file=fileName;
-                break;
+                return i;
             }
             i++;
         }

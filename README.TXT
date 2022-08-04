@@ -6,37 +6,81 @@ we have a three classes to help us:
 1.FsFile: this class contains the low level data of every file we create on our disk, the block size, blocks that's file is using, file size
 and the index of the index block.
 2.FileDescriptor: this class is the connecting between the FsFile and the name of the file.
-3.FsDisk:this class is our disk.
+3.FsDisk:this class is our disk,contains all operators for disk.
 
 
 ==functions==
 
- splitToArray: the function received 2 args, the input string and 2d array of chars, it’s split the input string every word in it entered in cell in the array that received.
+--Public
+FsDisk():
+constructor to open a file, and file it '\0'
 
-How It works: run at the input string save update 2 int every time one for the start index of the first character in the word and one for the last index in the word, and if end int is not zero so we arrived to the index of the last char in the word, so we allocate memory for the cells of the array with length of the word and + 1 for the ‘\0’ (end - start +1), if there’s wrong with allocate the program free what it allocate and exit from the program, and the last cell of the array is NULL.
+listAll():
+print the files at our disk and print the disk file to show what's there,
+when printing the disk content if the char is invisible add it to him 32 and print different char, but inside the file its different value.
 
-Loop: void function that run all the program, infinity loop.
+fsFormat():
+if the disk is already formatted and want to format it again, first close every opened file then delete all the files and there's contains and delete the BitVector,
+else if this the first time want to format the disk, first split the disk to blocks according to the block size that the user request,
+then initiate the bitVector to zero with size of num of blocks inside the disk this vector to tell us which blocks are free inside the disk.
+and fill the file to '\0', update the blockSize and is_formatted.
 
-history: its void function with no input args, that open the txt file "file.txt" and print the file to the console.
+CreateFile(string):
+get a name for the file and search if there an exist file in the same name in the disk,MainDir is a vector that contains every files inside the disk,
+if there's no file at the same name so we create an object of FsFile then connect it with his name using FileDescriptor object,
+at the end add the file to MainDir vector and add his name to OpenFileDescriptor vector and make it inUse (opened) and return the fd of it according to the index of it inside the openFileDescriptor.
+return values: success = fd, error = -1.
 
-count: the parameters that require it is string, pointer of int and another pointer of int, and return a string, the function edit the value of the two ints that were given to it, it takes ints by reference. one int to count how many words in the string, and the second one to count how many letters in the string, the string that given to the function is the string that the user give in the main.
+OpenFile(string):
+get the filename that the user want to open,search if the file is exist in the MairDir and make it inUse,
+then add his name to open fileDescriptor and return the fd of it according to the index of it inside the openFileDescriptor.
+return values: success = fd, error = -1.
 
-how it works: define a new string with length of 8 because the longest word that will return is "history" and the '\0' at the end of it. it runs throw the string and if the char at index i isn't space " " so it's a legal char so the letter counter++. if the char at index i is space " " and there's 1 or more legal chars so the word count++ and at the end if the char counter is larger than 1. add 1 for the word counter, because the word count actually count the splits between words. at the end the function check if the first word equal "exit" or "history" and return what is if its else return "" and in main they check if the returned value of count function equal "exit" or "history" and the wordcount equal to 1 so the main do what the word have to do. and if it equals to "" so that a normal input, and we have to add it to history file.
+CloseFile(int):
+get the fd and check if its exist in OpenFileDescriptor,
+then replace his name inside OpenFileDescriptor to "",
+this for the next Open or Create file get the first index of "" element inside OpenfileDescriptor to be his fd.
+return values: success = the file name, error "-1".
 
-Ex and exHistory: it received 4 parameters, int how many words in the string , the string and two pointer of int one for the command number and one for the word of the command, first it split the string to the array with size of wordCount +1, +1 for the NULL, it make a new process using fork() then execute the input string using execvp() function, after execute the command the father free the array.
+DelFile(string):
+get the file name to Delete it, it must be closed before you can delete it, search for the file in the MainDir and check if its closed,
+then call ClearAllDataOfFile function to free the contents of the file from the hard disk and free his blocks, at the end delete it form the vector.
+return values: success = 1, error = -1.
 
-countLine: function that run throw the file and count how many rows in the history file.
+WriteToFile(int,string,int):
+get the fd of the file to write inside it, what to write on it, what is the length of the input.
+get the file name of the file from OpenFileDescriptor vector, to search for the file into MainDir,
+first get the index of index_block of the file, if this first time so get a 2 new blocks one for index_block and other for data, update the index of block_index.
+inside the index_block save the index of data block, then start write inside the file,
+while the file size is less than max file size continue, and every character that written subtract one from free location at this block.
+if there's no free location at data block and the file size is less than the max file size, get a new data block.
+we type the index of block inside the file as a character according to his ascii value.
+to check if there's empty space inside the last used data block, get the value of ((size of block) - ((file size) mod (block size))) equal to free space size.
+return value: success = how many character fit inside the file, error = -1.
 
-writeToFile: its receive a string, open the “file.txt” and add the string to the file.
+ReadFromFile(int,string,len):
+get the fd of the file to write inside it, where to store the read, what is the length to read from file.
+get the file name of the file from OpenFileDescriptor vector, to search for the file into MainDir,
+get the index of block index if there's, get data block block one by one to reach the length that requested.
+return value: success how many characters read, error = -1.
 
-readFromFile: its receive int that contain which line the Function should execute. Using exHistory Function.
 
-==Program Files== ex2a.c ex2b.c
+--Private
+getNewBlock: search for free block inside the hard disk, run at BitVector and search for 0 value.
+return values: success = index of the block * blockSize, error = -1 "Disk is Full"
 
-==How to compile== compile: gcc ex2a.c -o ex2a run: ./ex2a
+ClearAllDataOfFile(int): the index of file inside MainDir vector, get BlockIndex and enter block block of data and replace all elements to "\0",
+at the end clear the index block, at every block its just cleared go to bitVector and update his value to 0 "free".
 
-compile: gcc ex2b.c -o ex2b run: ./ex2b
+==Program Files==
+main.cpp
 
-==input== string from user
+==How to compile==
+compile: g++ main.cpp -o main
+run: ./main
 
-==output== file.txt file The executed command Total command Total word in all commands
+==input==
+number of the operator that user want to do.
+
+==output==
+update the DISK_FILE_SIMULATOR file
