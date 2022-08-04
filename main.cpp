@@ -9,7 +9,7 @@
 
 using namespace std;
 
-#define DISK_SIZE 16
+#define DISK_SIZE 50
 
 //Proprieties of file
 class FsFile {
@@ -179,11 +179,12 @@ public:
         //delete all previous allocation
         if (is_formated) {
             int i = 0;
-            for (auto &file: MainDir) {
-                if (file->isInUse())
-                    CloseFile(i);
-                DelFile((file->getFileName()));
+            for(auto file:OpenFileDescriptors){
+                CloseFile(i);
                 i++;
+            }
+            for (auto &file: MainDir) {
+                delete file;
             }
             MainDir.clear();
             OpenFileDescriptors.clear();
@@ -227,8 +228,11 @@ public:
 
         //add the filename to opened file
         int i = 0;
+        bool added=false;
         for (auto &file: OpenFileDescriptors) {
             if (file.empty()) {
+                file=fileName;
+                added= true;
                 break;
             }
             i++;
@@ -237,7 +241,8 @@ public:
 
         newFile->setInUse(true);
         MainDir.push_back(newFile);
-        OpenFileDescriptors.insert(OpenFileDescriptors.begin()+i,fileName);
+        if(!added)
+            OpenFileDescriptors.push_back(fileName);
         return i;
 
     }
@@ -248,6 +253,10 @@ public:
         if (!is_formated)
             return -1;
         bool found= false;
+        for(auto file :OpenFileDescriptors){
+            if(file== fileName)
+                return -1;
+        }
         //search for the file and check if It's close to open it and add it to OpenFileDescriptors and update inUse value, else return -1
         for(auto file:MainDir){
             if(file->getFileName()==fileName){
